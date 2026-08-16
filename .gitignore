@@ -1,7 +1,9 @@
 node_modules
 .next
+.next-corrupt-*
 .env
 .env.local
 *.log
 .DS_Store
 *.tsbuildinfo
+.playwright-cli/

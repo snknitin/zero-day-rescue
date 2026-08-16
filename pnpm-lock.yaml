@@ -9,13 +9,13 @@ importers:
   .:
     dependencies:
       '@reactor-models/lingbot-world-2':
-        specifier: ^0.2.5
+        specifier: 0.2.5
         version: 0.2.5(hls.js@1.6.16)(react@19.2.3)(zustand@5.0.13(@types/react@19.2.14)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3)))
       '@reactor-team/js-sdk':
-        specifier: ^2.12.0
+        specifier: 2.12.0
         version: 2.12.0(hls.js@1.6.16)(react@19.2.3)(zustand@5.0.13(@types/react@19.2.14)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3)))
       '@reactor-team/ui':
-        specifier: ^1.4.0
+        specifier: 1.4.1
         version: 1.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       class-variance-authority:
         specifier: ^0.7.1

@@ -1,107 +1,85 @@
 # Zero-Day Rescue
 
-An interactive disaster-response rehearsal experience powered by **LingBot World 2** on Reactor. Operators navigate a generated earthquake site in real time, respond to evolving hazards, and complete a deterministic rescue mission while the world model renders the live environment.
+Zero-Day Rescue is a browser-based disaster-response rehearsal demo powered by Reactor LingBot World 2. Choose **Aftershock**, **Rising Water**, or **Ember Front**, navigate the generated site, trigger a live hazard, select a deterministic response, and review the after-action debrief.
 
-This repository currently contains Reactor's official LingBot World 2 reference frontend as the working integration baseline, along with the Zero-Day Rescue research, build plan, and generated corridor reference image. The next implementation step is to reduce the reference UI to the focused **Aftershock** mission experience.
+## Run on Windows
 
-Everything runs through the strongly-typed
-[`@reactor-models/lingbot-world-2`](https://www.npmjs.com/package/@reactor-models/lingbot-world-2)
-package, which wraps the base
-[`@reactor-team/js-sdk`](https://www.npmjs.com/package/@reactor-team/js-sdk)
-with typed commands, message hooks, and the `main_video` track view.
+Prerequisites: Node.js and `pnpm`, plus a Reactor API key with available credits.
 
-```
-┌──────────────────────┬─────────────────────────────────────┐
-│  Status  ▸ ready     │                                     │
-│                      │                                     │
-│  Quick Start         │                                     │
-│  ┌────────────┬───┐  │        live video output            │
-│  │ Noir alley │ ✎ │  │    (LingbotWorld2MainVideoView)     │
-│  ├────────────┼───┤  │                                     │
-│  │ Horseman   │ ✎ │  │                                     │
-│  ├────────────┼───┤  ├─────────────────────────────────────┤
-│  │ Jet ski    │ ✎ │  │  [1 rain] [2 fog]   ← hold events   │
-│  └────────────┴───┘  │   WASD  ◯ joystick  ←↑↓→  ◉ mouse   │
-│  Custom scene        │   jump / crouch / orbit switches    │
-└──────────────────────┴─────────────────────────────────────┘
+From PowerShell in this repository:
+
+```powershell
+Copy-Item .env.example .env.local
 ```
 
-## Quick start
+Edit `.env.local` and set the server-only key:
 
-You'll need a Reactor API key — grab one at [reactor.inc/account/api-keys](https://www.reactor.inc/account/api-keys). It starts with `rk_`.
+```text
+REACTOR_API_KEY=rk_your_real_key
+```
 
-```bash
-cp .env.example .env.local
-# add your key: REACTOR_API_KEY=rk_...
+Then install and start the development server:
 
-pnpm install
+```powershell
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), click **Connect**, then click one of the Quick Start examples. It uploads the scene's starting image, sends its composed prompt, and starts generating; from there the controls are live.
+Open [http://localhost:3000](http://localhost:3000). Select a scenario and click **Start mission**. Starting creates a remote Reactor session and uses account credits.
 
-The API key never reaches the browser: the server route [`app/api/reactor/token/route.ts`](app/api/reactor/token/route.ts) exchanges it for a short-lived JWT scoped to `reactor/lingbot-world-2` sessions (via `authorization_details` — the token can only create sessions for that model and act on the sessions it created), and the SDK re-fetches it (via the browser's HTTP cache) on every API call through the `getJwt` resolver.
+For a judge-ready recording, follow [DEMO_SCRIPT.md](./DEMO_SCRIPT.md). Mission audio is opt-in and generated locally by the browser (ambient synthesis plus dispatch/survivor speech). LingBot World 2 exposes a video track but no audio track, so the app labels this instead of presenting it as model-native output.
 
-## What you can do with it
+Controls:
 
-- **Quick Start examples.** Three curated scenes (a noir alley patrol, a battlefield horseman, a jet-ski cruise). One click uploads the image, sends the prompt, and starts.
-- **Drive the world.** WASD (or the joystick) moves via `set_move_longitudinal` / `set_move_lateral`; arrows and click-to-engage mouse-look rotate via per-latent `set_camera_pose` deltas; Q/E roll; O toggles orbit (circle a point ahead instead of turning in place).
-- **Trigger world events.** Each scene binds detail clauses to hold-keys 1–9 — hold to weave the event into the prompt, release to revert.
-- **Jump and crouch** with selectable modes, from a simple prompt swap up to hand-editable per-step motion arcs (charge levels, dip patterns). The motion system is documented in [`skill/SKILL.md`](skill/SKILL.md).
-- **Edit prompts live.** Click ✎ on any example to open the layered scene editor (base / camera / movement / events / vertical) — editing the running scene re-sends the prompt on the fly, and edits persist in `localStorage` until you press ↺. The **Show prompt** inspector (under Advanced) shows exactly what composed prompt the model is seeing and why.
-- **Bring your own scene.** The Custom scene card takes your image plus a from-scratch layered prompt.
-- **Backend knobs** (under Advanced): seed, rotation speed, DiT attention window, and KV-cache reset mode.
-- **Snap a clip.** A "Capture" panel sits at the bottom of the sidebar. Click once and the SDK grabs the last 10 seconds of the live stream, opens a preview modal, and offers an MP4 download — no recording stack to wire up, no extra services.
+- `WASD`: movement
+- Arrow keys: look
+- Click the video: mouse look; `Esc` releases it
+- `1`, `2`, `3`: Scan, Assist, Retreat when the response phase unlocks
 
-## How the prompt is built
+## Production check
 
-The model only ever sees a single prose string (`set_prompt`), but the app authors it in layers (`lib/lingbot-world-prompts.ts`):
+Do not run this while `pnpm dev` is still running, because both commands use `.next`:
 
-- **base** — world identity: subject, environment, style
-- **camera / movement** — each with `static` and `dynamic` variants, selected by whether you're currently moving
-- **events** — hold-key detail clauses that stack while held
-- **vertical** — the jump / crouch / stand sentence while those controls are engaged
+```powershell
+pnpm build
+pnpm start
+```
 
-`composePrompt()` flattens the active selection to prose and the controller re-sends it whenever the input state changes — so the text always matches the motion. The inspector panel visualizes this composition live.
+Use either the development pair (`pnpm dev`) or the production pair (`pnpm build` then `pnpm start`), not both simultaneously in the same workspace.
 
-## Configuration
+## Repair a missing `.next` chunk
 
-| Env var                       | Required | What it does                                                                    |
-| ----------------------------- | -------- | ------------------------------------------------------------------------------- |
-| `REACTOR_API_KEY`             | yes      | Server-side key exchanged for session JWTs by `app/api/reactor/token/route.ts`. |
-| `NEXT_PUBLIC_COORDINATOR_URL` | no       | Reactor API base URL. Defaults to `https://api.reactor.inc`.                    |
+An error such as `Cannot find module './299.js'` means the generated Next.js cache is stale or was replaced while a server was running.
 
-If `REACTOR_API_KEY` is missing, the app renders a friendly setup landing instead of erroring — see [`app/SetupRequired.tsx`](app/SetupRequired.tsx).
+1. Stop the running server with `Ctrl+C`.
+2. Remove only the generated cache:
 
-## Code tour
+```powershell
+Remove-Item -LiteralPath .next -Recurse -Force
+```
 
-The interesting bits, in roughly the order you'd read them:
+3. Restart:
 
-| File                                                                                                             | What's in it                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`app/page.tsx`](app/page.tsx)                                                                                   | Server Component gate: renders the app when `REACTOR_API_KEY` is set, the setup landing when it isn't.                                                                                                   |
-| [`app/LingbotWorld2App.tsx`](app/LingbotWorld2App.tsx)                                                           | Client tree: the `getJwt` resolver, `<LingbotWorld2Provider>`, connection status bar, page layout.                                                                                                       |
-| [`app/api/reactor/token/route.ts`](app/api/reactor/token/route.ts)                                               | Cacheable GET route that exchanges `REACTOR_API_KEY` for a short-lived, session-scoped JWT (pinned to the model via `authorization_details`).                                                            |
-| [`components/lingbot-world-2/LingbotWorldController.tsx`](components/lingbot-world-2/LingbotWorldController.tsx) | The heart of the app: message handling, WASD/look/jump/crouch input → typed SDK commands, prompt recomposition, the sidebar and control surfaces.                                                        |
-| [`lib/lingbot-world-prompts.ts`](lib/lingbot-world-prompts.ts)                                                   | The layered `StructuredScene` model and the pure `composePrompt()`.                                                                                                                                      |
-| [`lib/lingbot-cases-examples.ts`](lib/lingbot-cases-examples.ts) + [`lib/lingbot-cases/`](lib/lingbot-cases)     | The example scenes, one JSON per scene.                                                                                                                                                                  |
-| [`components/lingbot-world-2/LayeredSceneEditor.tsx`](components/lingbot-world-2/LayeredSceneEditor.tsx)         | The full-screen layered prompt editor behind every ✎ button.                                                                                                                                             |
-| [`components/lingbot-world-2/LivePromptInspector.tsx`](components/lingbot-world-2/LivePromptInspector.tsx)       | Read-only live view of the composed prompt with per-layer breakdown.                                                                                                                                     |
-| [`components/lingbot-world-2/prompt-segments.ts`](components/lingbot-world-2/prompt-segments.ts)                 | Segment-level composition mirror that powers the inspector and editor preview.                                                                                                                           |
-| [`components/SnapClip.tsx`](components/SnapClip.tsx)                                                             | Model-agnostic. Captures the last N seconds of the live stream via the SDK's `requestClip(...)` and opens a preview modal with `<ClipPlayer>` + `<ClipDownloadButton>`. Drop-in for any Reactor example. |
-| [`skill/SKILL.md`](skill/SKILL.md)                                                                               | The extension guide, including the motion-system deep dive: the `camera_pose` contract, per-step arcs, symmetry, trigger semantics.                                                                      |
+```powershell
+pnpm dev
+```
 
-## Going further
+Never remove `app`, `components`, `lib`, `public`, or your environment files for this repair.
 
-[`skill/SKILL.md`](skill/SKILL.md) is the deep dive for extending this app — the SDK's connection / events / messages model, the camera-pose channel rules, the layered prompt system and its override store, auth, and clip capture. Read it before adding controls or scenes.
+## Reactor connection errors
 
-Deferred features you could add next: a gamepad binding, free-text mid-stream prompt entry, multi-clip capture galleries, scheduled world events.
+- `429 no available capacity`: Reactor currently has no free model server. No session started; wait 20–30 seconds and use **Retry mission**.
+- `403` during session polling or ICE setup: reload once, then retry. The app keeps one scoped JWT for all requests belonging to a session and rotates it after teardown or failure.
+- `402`: the Reactor account needs credits.
 
-## Learn more
+## Architecture
 
-- [Reactor Docs](https://docs.reactor.inc/overview)
-- [`skill/SKILL.md`](skill/SKILL.md) — how input becomes motion, and every extension pattern, in depth
+- [`components/mission/MissionShell.tsx`](components/mission/MissionShell.tsx): shared mission UI, Reactor lifecycle, controls, timer, hazard sequencing, errors, and teardown.
+- [`lib/mission/scenarios/index.ts`](lib/mission/scenarios/index.ts): the three typed scenario definitions.
+- [`lib/mission/reducer.ts`](lib/mission/reducer.ts): deterministic mission state machine.
+- [`lib/mission/compose-mission-prompt.ts`](lib/mission/compose-mission-prompt.ts): full replacement prompt composition.
+- [`app/api/reactor/token/route.ts`](app/api/reactor/token/route.ts): server-side exchange for a short-lived JWT scoped only to `reactor/lingbot-world-2`.
+- [`public/scenarios`](public/scenarios): local seed images; no runtime image URL dependency.
+- [`research/ASSET_PROVENANCE.md`](research/ASSET_PROVENANCE.md): source and asset-quality notes.
 
-## Tech stack
-
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · [`@reactor-models/lingbot-world-2`](https://www.npmjs.com/package/@reactor-models/lingbot-world-2) · [`@reactor-team/js-sdk`](https://www.npmjs.com/package/@reactor-team/js-sdk) (recording primitives) · [`hls.js`](https://www.npmjs.com/package/hls.js) (clip preview) · [`@reactor-team/ui`](https://www.npmjs.com/package/@reactor-team/ui) (design tokens)
+The browser never receives `REACTOR_API_KEY`. The product provides generated rehearsal, not a map, structural model, digital twin, safety certification, or validated training tool.
