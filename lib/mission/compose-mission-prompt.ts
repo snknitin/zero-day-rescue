@@ -1,16 +1,33 @@
-import type { FieldActionId, IncidentPhase, MissionChoice, ScenarioDefinition } from "@/lib/mission/types";
+import type { FieldActionId, IncidentId, IncidentPhase, MissionChoice, ScenarioDefinition } from "@/lib/mission/types";
 
 const camera = {
-  static: "Strict first-person rescue-robot view. The viewpoint remains stationary when no movement input is held. Look-input is the only source of camera rotation; the three fixed landmarks retain their relative positions.",
-  dynamic: "Strict first-person rescue-robot view. Movement input advances through the site only while held; look-input changes heading. The three named landmarks remain persistent spatial anchors as the viewpoint travels.",
+  static: "First-person viewpoint. While controls are idle, hold position, heading, exposure, foreground, and landmark geometry steady.",
+  dynamic: "First-person viewpoint. Respond smoothly only to held movement or look controls; preserve exposure, foreground, and landmark identity.",
 };
 
-export function composeMissionPrompt(scenario: ScenarioDefinition, moving: boolean, incident: IncidentPhase, choice: MissionChoice | null, fieldAction: FieldActionId | null = null) {
+export function composeMissionPrompt(
+  scenario: ScenarioDefinition,
+  moving: boolean,
+  incidentPhase: IncidentPhase,
+  incidentId: IncidentId | null,
+  settledIncidentIds: IncidentId[] = [],
+  fieldActionIds: FieldActionId[] = [],
+  choice: MissionChoice | null = null,
+) {
   const parts = [scenario.prompt.base, moving ? camera.dynamic : camera.static];
-  if (incident === "hazard_active") parts.push(scenario.prompt.incident.active);
-  if (incident === "hazard_settled") parts.push(scenario.prompt.incident.settled);
-  if (choice) parts.push(scenario.prompt.consequences[choice]);
-  if (fieldAction) parts.push(scenario.fieldActions.find((item) => item.id === fieldAction)?.prompt ?? "");
+  // Keep only the most recent settled event in model conditioning. The app
+  // retains the complete exercise history without overloading the video model.
+  for (const settledId of settledIncidentIds.slice(-1)) {
+    const settled = scenario.incidents.find((item) => item.id === settledId);
+    if (settled) parts.push(settled.prompt.settled);
+  }
+  const incident = scenario.incidents.find((item) => item.id === incidentId);
+  if (incidentPhase === "hazard_active" && incident) parts.push(incident.prompt.active);
+  if (incidentPhase === "hazard_settled" && incident) parts.push(incident.prompt.settled);
+  const latestAction = scenario.fieldActions.find((item) => item.id === fieldActionIds.at(-1));
+  if (latestAction) parts.push(latestAction.prompt);
+  const response = scenario.choices.find((item) => item.id === choice);
+  if (response) parts.push(response.prompt);
   const prompt = parts.join(" ").trim();
   if (prompt.length >= 2000) throw new Error(`Mission prompt exceeds 2,000 characters (${prompt.length})`);
   return prompt;

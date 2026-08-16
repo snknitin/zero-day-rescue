@@ -11,7 +11,6 @@ export function useMissionAudio(scenarioId: ScenarioId | null, phase: MissionPha
 
   const announce = useCallback((text: string) => {
     if (!nodesRef.current || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.96;
     utterance.pitch = 0.9;

@@ -1,6 +1,6 @@
 # Zero-Day Rescue
 
-Zero-Day Rescue is a browser-based disaster-response rehearsal demo powered by Reactor LingBot World 2. Choose **Aftershock**, **Rising Water**, or **Ember Front**, navigate the generated site, trigger a live hazard, select a deterministic response, and review the after-action debrief.
+Zero-Day Rescue is a browser-based disaster-response rehearsal demo powered by Reactor LingBot World 2. Choose **Aftershock**, **Rising Water**, or **Ember Front**, operate scenario-specific robot equipment, inject a plausible environmental event as the Scenario Director, select an incident-specific response, and review the after-action debrief.
 
 ## Run on Windows
 
@@ -34,7 +34,15 @@ Controls:
 - `WASD`: movement
 - Arrow keys: look
 - Click the video: mouse look; `Esc` releases it
-- `1`, `2`, `3`: Scan, Assist, Retreat when the response phase unlocks
+- `1`, `2`, `3`: the three scenario-specific response decisions shown after an event settles
+
+Each mission lasts three minutes. Robot interventions and Director events are deliberately separate: the robot can deploy shoring, pumps, tethers, wet lines, sensors, and shields as deterministic mission state shown in the telemetry HUD. These controls do not recondition the generated video. Environmental changes come only from scenario-grounded Director events such as a cracked ceiling failure, existing flood debris, or a scorched branch fall. Director events remain probabilistic full-prompt replacements applied at LingBot chunk boundaries, not deterministic game-engine physics.
+
+There is no separate idle shutdown. A live session runs until the three-minute mission clock ends, the operator presses **Finish mission**, or an unrecoverable transport error requires teardown. Recoverable WebRTC interruptions use the existing session, restore its scenario conditions, and resume generation.
+
+For long-session quality, every composed prompt restates seed-backed landmarks, only the most recent settled event remains in model conditioning, movement/tools/responses never resend the prompt, and Director events hold their active state for at least six seconds and four rendered chunks before an explicit settled state. `set_kv_cache_reset` stays in `auto`; abrupt one-shot cache resets are not used during an event. Radio cues queue locally, and settled narration waits for a settled video chunk. Once a visibly bad frame has entered an autoregressive stream it may persist; finish and start a clean mission before recording rather than evaluating prompt changes from an already degraded run.
+
+This is a cinematic visual-rehearsal layer, not robot-training data. A real training stack needs a deterministic simulator such as Isaac Sim or Gazebo, a ROS control loop, repeatable geometry/physics, and sensor ground truth. LingBot is useful for incident ideation and presentation, not for validating a navigation or rescue policy.
 
 ## Production check
 
@@ -75,7 +83,7 @@ Never remove `app`, `components`, `lib`, `public`, or your environment files for
 ## Architecture
 
 - [`components/mission/MissionShell.tsx`](components/mission/MissionShell.tsx): shared mission UI, Reactor lifecycle, controls, timer, hazard sequencing, errors, and teardown.
-- [`lib/mission/scenarios/index.ts`](lib/mission/scenarios/index.ts): the three typed scenario definitions.
+- [`lib/mission/scenarios/index.ts`](lib/mission/scenarios/index.ts): three typed scenario definitions, each with four robot interventions, three Director events, and three unique responses.
 - [`lib/mission/reducer.ts`](lib/mission/reducer.ts): deterministic mission state machine.
 - [`lib/mission/compose-mission-prompt.ts`](lib/mission/compose-mission-prompt.ts): full replacement prompt composition.
 - [`app/api/reactor/token/route.ts`](app/api/reactor/token/route.ts): server-side exchange for a short-lived JWT scoped only to `reactor/lingbot-world-2`.

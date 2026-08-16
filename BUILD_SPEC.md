@@ -6,6 +6,8 @@
 > Repository: `snknitin/zero-day-rescue`  
 > Last model-contract verification: 2026-08-16
 
+> **Product refinement (supersedes conflicting MVP details below):** Missions now run for 180 seconds and can continue through up to three distinct Director events. Generic Scan/Assist/Retreat labels and generic obstacle creation are replaced by scenario-authored robot interventions, Scenario Director events grounded in existing world elements, and scenario-specific response labels/consequences. LingBot World 2 does not generate structured action menus; these controls are deterministic scenario data. Robot interventions and response decisions update only deterministic mission state and the telemetry HUD; they do not rewrite the video. Only Director events issue full prompt replacements, hold for at least six seconds and four rendered chunks, then issue one settled prompt. Every prompt must remain aligned with the seed image and automatic KV-cache reset must remain enabled. The application must not describe prompt-steered visual changes as deterministic physics or the output as valid robot-training data.
+
 ## 0. Instructions for the implementing Codex session
 
 Implement this specification in the existing repository. Use the `reactor-world-models` skill and refresh the current LingBot World 2 overview, schema, prompt guide, and tutorial before changing SDK-facing code.
