@@ -8,12 +8,12 @@ const MODEL_NAME = "reactor/lingbot-world-2";
 // Session budget for one token — how many sessions it may ever create
 // (closed sessions still count). The browser caches the token for its
 // whole lifetime, so leave room for a burst of reconnects.
-const MAX_SESSIONS = 10;
+const MAX_SESSIONS = 1;
 
 // How long we ask Reactor to make the JWT valid for (the server caps
 // this at 6h). One hour keeps a cached token — and its remaining
 // session budget — from outliving a normal visit.
-const TOKEN_LIFETIME_SECONDS = 60 * 60;
+const TOKEN_LIFETIME_SECONDS = 15 * 60;
 
 // Safety margin on the cache lifetime so an in-flight request doesn't
 // race with the real expiry.
@@ -74,9 +74,17 @@ export async function GET() {
   });
 
   if (!res.ok) {
+    const publicStatus = res.status === 401 ? 401 : res.status === 402 ? 402 : res.status === 429 ? 429 : 502;
+    const message = res.status === 401
+      ? "Reactor authentication failed. Check the server-side API key."
+      : res.status === 402
+        ? "Reactor credits are unavailable for this mission."
+        : res.status === 429
+          ? "Reactor session capacity is busy. End another session and retry."
+          : "Reactor session service is unavailable.";
     return NextResponse.json(
-      { error: `Reactor /tokens returned ${res.status}` },
-      { status: 502 },
+      { error: message },
+      { status: publicStatus },
     );
   }
 
@@ -89,7 +97,7 @@ export async function GET() {
   const maxAge = Math.max(0, expires_at - nowSeconds - CACHE_SKEW_SECONDS);
 
   return NextResponse.json(
-    { jwt },
+    { jwt, expiresAt: expires_at, modelId: MODEL_NAME },
     {
       headers: {
         "Cache-Control": `private, max-age=${maxAge}`,
